@@ -18,8 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <stdio.h>
 #include "poruke.h"
+#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -43,7 +43,10 @@
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan1;
 
+SPI_HandleTypeDef hspi1;
+
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 DMA_HandleTypeDef hdma_tim1_ch1;
 
 UART_HandleTypeDef huart2;
@@ -62,6 +65,7 @@ uint32_t slobodan = 0;
 uint32_t vrijednost_registra = 0;
 uint32_t statusMailbox = 0;
 uint8_t arr[3];
+uint32_t cnt = 0;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -69,11 +73,14 @@ static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_SPI1_Init(void);
+static void MX_TIM2_Init(void);
 void napraviPoruku(CAN_TxHeaderTypeDef *TxHeader,uint32_t broj);
 void posaljiPoruku (CAN_TxHeaderTypeDef *TxHeader,uint8_t brojMailboxa);
 void konfigurirajPoruke(void);
 void vrtiServoMotor(void);
 void posaljiPorukuUSlobodanMailbox(CAN_TxHeaderTypeDef *poruka);
+void myDelay(uint32_t t);
 /* USER CODE BEGIN PFP */
 int _write(int file, char *ptr, int len) {
 
@@ -127,46 +134,57 @@ int main(void)
   MX_TIM1_Init();
   MX_CAN1_Init();
   MX_USART2_UART_Init();
+  MX_SPI1_Init();
+  MX_TIM2_Init();
 
-//  gotovo = HAL_NVIC_GetPriorityGrouping();
-//  HAL_NVIC_GetPriority(SysTick_IRQn, 3, &preemp, &subprio);
-//  HAL_NVIC_GetPriority(CAN1_RX0_IRQn, 3, &preemp, &subprio);
+  //  gotovo = HAL_NVIC_GetPriorityGrouping();
+  //  HAL_NVIC_GetPriority(SysTick_IRQn, 3, &preemp, &subprio);
+  //  HAL_NVIC_GetPriority(CAN1_RX0_IRQn, 3, &preemp, &subprio);
 
-  konfigurirajPoruke();
+    konfigurirajPoruke();
 
-  HAL_CAN_Start(&hcan1);
-  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+    HAL_CAN_Start(&hcan1);
+    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
 
-  TIM1 -> CCR1 = 88;
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  posaljiPoruku(&masterprvaPoruka, 0);
-  while (1) {
-	  do{
-		  __disable_irq();
-		  switch(RxHeader.StdId) {
+    TIM1 -> CCR1 = 88;
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+    posaljiPoruku(&masterprvaPoruka, 0);
+    while (1) {
 
-		 	case 0x700:
-		 		vrtiServoMotor();
-		 		posaljiPorukuUSlobodanMailbox(&prvaPoruka);
-		 		break;
+  	  do{
+  		  __disable_irq();
+  		  switch(RxHeader.StdId) {
 
-		  }
+  		 	case 0x700:
+  		 		vrtiServoMotor();
+  		 		posaljiPorukuUSlobodanMailbox(&prvaPoruka);
+  		 		break;
 
-		  __enable_irq();
+  		  }
 
-
-
-
-
+  		  __enable_irq();
 
 
-	  }while(HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0);
 
 
-	  }
 
 
-  }
+
+  	  }while(HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0);
+
+
+  	  }
+}
+
+void myDelay(uint32_t t) {
+
+	HAL_TIM_Base_Start(&htim2);
+	while((htim2.Instance -> CNT) < (t*100)-1);
+	HAL_TIM_Base_Stop(&htim2);
+	htim2.Instance -> CNT = 0;
+
+}
+
 
 
 
@@ -213,13 +231,13 @@ void vrtiServoMotor(void) {
 
 	TIM1->CCR1 = 88;
 	printf("Sredina\r\n");
-	HAL_Delay(500);
+	myDelay(500);
 	TIM1->CCR1 = 55;
 	printf("Lijevo\r\n");
-	HAL_Delay(500);
+	myDelay(500);
 	TIM1->CCR1 = 121;
 	printf("Desno\r\n");
-	HAL_Delay(500);
+	myDelay(500);
 
 
 }
@@ -257,7 +275,6 @@ void konfigurirajPoruke(void) {
 
 
 }
-
 
 
 void SystemClock_Config(void)
@@ -318,7 +335,7 @@ static void MX_CAN1_Init(void)
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
   hcan1.Init.Prescaler = 4;
-  hcan1.Init.Mode = CAN_MODE_LOOPBACK;
+  hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan1.Init.TimeSeg1 = CAN_BS1_13TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_2TQ;
@@ -332,22 +349,62 @@ static void MX_CAN1_Init(void)
   {
     Error_Handler();
   }
-	CAN_FilterTypeDef filter;
-	filter.FilterIdHigh = (0x600 << 5);
-	filter.FilterIdLow = 0x0;
-	filter.FilterMaskIdHigh = (0x600 << 5);
-	filter.FilterMaskIdLow = 0x0;
-	filter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
-	filter.FilterBank = 5;
-	filter.FilterMode = CAN_FILTERMODE_IDMASK;
-	filter.FilterScale = CAN_FILTERSCALE_32BIT;
-	filter.FilterActivation = CAN_FILTER_ENABLE;
-	filter.SlaveStartFilterBank = 0;
-	if (HAL_CAN_ConfigFilter(&hcan1,&filter) != HAL_OK ) {
+  /* USER CODE BEGIN CAN1_Init 2 */
+  CAN_FilterTypeDef filter;
+  	filter.FilterIdHigh = (0x600 << 5);
+  	filter.FilterIdLow = 0x0;
+  	filter.FilterMaskIdHigh = (0x600 << 5);
+  	filter.FilterMaskIdLow = 0x0;
+  	filter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+  	filter.FilterBank = 5;
+  	filter.FilterMode = CAN_FILTERMODE_IDMASK;
+  	filter.FilterScale = CAN_FILTERSCALE_32BIT;
+  	filter.FilterActivation = CAN_FILTER_ENABLE;
+  	filter.SlaveStartFilterBank = 0;
+  	if (HAL_CAN_ConfigFilter(&hcan1,&filter) != HAL_OK ) {
 
-	  Error_Handler();
+  	  Error_Handler();
 
-	}
+  	}
+  /* USER CODE END CAN1_Init 2 */
+
+}
+
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
 
 }
 
@@ -427,6 +484,65 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 640-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 100000-1;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -482,14 +598,49 @@ static void MX_DMA_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_15, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PE3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PD12 PD15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PE0 PE1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
