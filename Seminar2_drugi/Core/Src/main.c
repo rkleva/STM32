@@ -60,6 +60,8 @@ uint32_t preemp = 5;
 uint32_t subprio = 5;
 uint32_t slobodan = 0;
 uint32_t vrijednost_registra = 0;
+uint32_t statusMailbox = 0;
+uint8_t arr[3];
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -71,6 +73,7 @@ void napraviPoruku(CAN_TxHeaderTypeDef *TxHeader,uint32_t broj);
 void posaljiPoruku (CAN_TxHeaderTypeDef *TxHeader,uint8_t brojMailboxa);
 void konfigurirajPoruke(void);
 void vrtiServoMotor(void);
+void posaljiPorukuUSlobodanMailbox(CAN_TxHeaderTypeDef *poruka);
 /* USER CODE BEGIN PFP */
 int _write(int file, char *ptr, int len) {
 
@@ -136,30 +139,28 @@ int main(void)
 
   TIM1 -> CCR1 = 88;
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  while (1)
-    {
-	  slobodan = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
-	  if (slobodan > 0) {
-
-		  prim = __get_PRIMASK();
-
-		  vrijednost_registra = hcan1.Instance -> TSR;
-		  posaljiPoruku(&masterprvaPoruka, 0);
-		  vrijednost_registra = hcan1.Instance -> TSR;
-		  posaljiPoruku(&masterdrugaPoruka, 1);
-		  //slobodan = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
-		  //vrijednost_registra = hcan1.Instance -> TSR;
-		  posaljiPoruku(&mastertrecaPoruka, 2);
-		  vrijednost_registra = hcan1.Instance -> TSR;
-		  HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
+  posaljiPoruku(&masterprvaPoruka, 0);
+  while (1) {
+	  do{
+		  __disable_irq();
 		  switch(RxHeader.StdId) {
 
-		  case 0x700:
-			  vrtiServoMotor();
-			  break;
-
+		 	case 0x700:
+		 		vrtiServoMotor();
+		 		posaljiPorukuUSlobodanMailbox(&prvaPoruka);
+		 		break;
 
 		  }
+
+		  __enable_irq();
+
+
+
+
+
+
+
+	  }while(HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0);
 
 
 	  }
@@ -167,11 +168,47 @@ int main(void)
 
   }
 
+
+
+void posaljiPorukuUSlobodanMailbox(CAN_TxHeaderTypeDef *poruka) {
+	uint32_t statusMailbox =  hcan1.Instance -> TSR;
+	uint32_t stanje = ((statusMailbox & (7 << 26)) >> 26);
+
+
+	    do
+	     switch(stanje) {
+
+
+	        case 1:
+	            posaljiPoruku(poruka, 0);
+	            break;
+
+	        case 2:
+	            posaljiPoruku(poruka, 1);
+	            break;
+
+	        case 3:
+	            posaljiPoruku(poruka, 0);
+	            break;
+	        case 4:
+	            posaljiPoruku(poruka, 2);
+	            break;
+	        case 5:
+	            posaljiPoruku(poruka, 2);
+	            break;
+
+	        case 6:
+	            posaljiPoruku(poruka, 1);
+	            break;
+	        case 7:
+	            posaljiPoruku(poruka, 0);
+	            break;
+
+			  }while(!(stanje));
+
+
 }
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+
 void vrtiServoMotor(void) {
 
 	TIM1->CCR1 = 88;
