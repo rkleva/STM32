@@ -29,7 +29,7 @@ void napraviPoruku(CAN_TxHeaderTypeDef *TxHeader,uint32_t broj) {
 	 TxHeader -> ExtId = 0;
 	 TxHeader ->IDE = 0;
 	 TxHeader -> RTR = 0;
-	 TxHeader -> DLC = 1;
+	 TxHeader -> DLC = 8;
 
 
 }
