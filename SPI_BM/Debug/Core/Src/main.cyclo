@@ -14,7 +14,7 @@
 ../Core/Inc/help_functions.h:256:7:byte_array_to_bit_array10_data_PEC	4
 ../Core/Inc/help_functions.h:276:7:word_to_binary_array10_data_PEC	2
 ../Core/Src/main.c:82:5:main	2
-../Core/Src/main.c:188:6:SystemClock_Config	3
-../Core/Src/main.c:234:13:MX_SPI2_Init	2
-../Core/Src/main.c:272:13:MX_GPIO_Init	1
-../Core/Src/main.c:306:6:Error_Handler	1
+../Core/Src/main.c:200:6:SystemClock_Config	3
+../Core/Src/main.c:246:13:MX_SPI2_Init	2
+../Core/Src/main.c:284:13:MX_GPIO_Init	1
+../Core/Src/main.c:318:6:Error_Handler	1

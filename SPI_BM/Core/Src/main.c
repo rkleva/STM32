@@ -51,8 +51,8 @@ uint8_t data_read[64];
 SPI_HandleTypeDef hspi1;
 uint8_t spi_frame[16];
 uint8_t readVcell[6];
-uint8_t write_data_A[6] = {0x03, 0x00, 0x04, 0xFF, 0x3F, 0x08};
-uint8_t write_data_B[6] = {0x010, 0xf8, 0x7F, 0x00, 0x00, 0x00};
+uint8_t write_data_A[6] = {0x06, 0x00, 0x04, 0xFF, 0x3F, 0x08};
+uint8_t write_data_B[6] = {0x00, 0xf8, 0x7F, 0x00, 0x01, 0x00};
 uint8_t dummy_spi_frame[12] = {0x00, 0x88, 0x3D, 0x60, 0x81, 0x00, 0x04, 0xFF, 0x3F, 0x08, 0x00, 0xDC};
 uint8_t dummy_standby[1] = {0xFF};
 uint8_t dummy_wakeup[120];
@@ -115,9 +115,21 @@ int main(void)
   wakeup_dummy();
   HAL_Delay(10);
 
-  BMS_write_SPI(0x0001, spi_frame, write_data_A, 6);
-  HAL_Delay(2);
-  BMS_read_SPI(0x0002, spi_frame, data_read);
+
+
+  BMS_command_SPI(0x02F0); //Start ADC conversion without redundancy
+
+  HAL_Delay(200);
+
+
+  BMS_write_SPI(WRCFGB, spi_frame, write_data_B, 6);
+  HAL_Delay(1);
+
+  BMS_read_SPI(RDCFGB, spi_frame, data_read);
+
+
+
+
 
 
 
@@ -175,7 +187,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	  BMS_read_SPI(0x0044, spi_frame, data_read);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
