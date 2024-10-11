@@ -19,6 +19,7 @@ extern uint8_t dummy_standby[1];
 extern uint8_t dummy_wakeup[120];
 extern uint8_t binary_array[48];
 extern uint8_t expanded_array[54];
+extern float cells_voltage[16];
 #define CRC10_POLY 0x08F  // Polynomial: x^10 + x^7 + x^3 + x^2 + x + 1
 #define CRC15_POLY 0x4599 // Polynomial: x^15 + x^14 + x^10 + x^8 + x^7 + x^4 + x^3 + 1
 #define PEC10_WRITE   1
@@ -233,7 +234,13 @@ void construct_spi_write_frame(uint16_t command, uint8_t *spi_frame, uint16_t in
 		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_3, GPIO_PIN_SET);
 	}
 
-
+	void BMS_read_all_SPI(uint16_t command, uint8_t *spi_frame, uint8_t *read_frame) {
+			construct_spi_write_frame(command, spi_frame, 2, NULL, 0);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_3, GPIO_PIN_RESET);
+			HAL_SPI_Transmit(&hspi2, spi_frame, 4, 10);
+			HAL_SPI_Receive(&hspi2, read_frame, 34, 10);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_3, GPIO_PIN_SET);
+		}
 
 
 	void wakeup_dummy() {
@@ -281,5 +288,13 @@ void construct_spi_write_frame(uint16_t command, uint8_t *spi_frame, uint16_t in
 	    }
 	}
 
+
+	void monitor_cells(void) {
+
+		for (int i = 0, j = 0; i < 32; i += 2, j++) {
+		    cells_voltage[j] = (data_read[i + 1] << 8) | (data_read[i]);
+		    cells_voltage[j] = cells_voltage[j] * 150 * 0.000001 + 1.5;
+		    }
+		}
 
 #endif /* INC_HELP_FUNCTIONS_H_ */

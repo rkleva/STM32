@@ -58,6 +58,7 @@ uint8_t dummy_standby[1] = {0xFF};
 uint8_t dummy_wakeup[120];
 uint8_t binary_array[48];
 uint8_t expanded_array[54];
+float cells_voltage[16];
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -117,17 +118,19 @@ int main(void)
 
 
 
-  BMS_command_SPI(0x02F0); //Start ADC conversion without redundancy
+  BMS_command_SPI(0x03E0); //Start ADC conversion with redundancy
 
   HAL_Delay(200);
 
 
-  BMS_write_SPI(WRCFGB, spi_frame, write_data_B, 6);
-  HAL_Delay(1);
+//  BMS_write_SPI(WRCFGB, spi_frame, write_data_B, 6);
+//  HAL_Delay(1);
+//
+//  BMS_read_SPI(RDCFGB, spi_frame, data_read);
+//  HAL_Delay(1);
 
-  BMS_read_SPI(RDCFGB, spi_frame, data_read);
-
-
+  BMS_read_all_SPI(0x004C, spi_frame, data_read);
+  monitor_cells();
 
 
 
@@ -187,7 +190,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  BMS_read_SPI(0x0044, spi_frame, data_read);
+	  BMS_read_all_SPI(0x004C, spi_frame, data_read);
+	  monitor_cells();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

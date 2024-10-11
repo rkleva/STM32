@@ -50,6 +50,13 @@
 #define RDACF 0x004B				/* Read Averaged Cell Voltage Register Group F */
 //----------------------------------------------------------------------------------
 
+/***** PWM Register Commands *****/
+//----------------------------------------------------------------------------------
+#define WRPWMA 0x0020				/* Write PWM Register Group A */
+#define RDPWMA 0x0022				/* Read PWM Register Group A */
+#define WRPWMB 0x0021				/* Write PWM Register Group B */
+#define RDPWMB 0x0023				/* Read PWM Register Group B */
+//----------------------------------------------------------------------------------
 
 
 
