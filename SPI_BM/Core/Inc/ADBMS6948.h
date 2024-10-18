@@ -59,8 +59,12 @@
 //----------------------------------------------------------------------------------
 
 
-
-
+/***** ADC Commands *****/
+//----------------------------------------------------------------------------------
+#define ADCV_RD	0x0360				/* Start Cell Voltage ADC Conversion and Poll Status with RD = 1 */
+#define ADCV_CONT 0x02E0			/* Start Cell Voltage ADC Conversion and Poll Status with CONT = 1 */
+#define ADCV_DCP 0x0270				/* Start Cell Voltage ADC Conversion and Poll Status with DCP = 1 */
+#define ADCV_RSTF 0x0264            /* Start Cell Voltage ADC Conversion and Poll Status with RSTF = 1 */
 
 
 

@@ -48,16 +48,25 @@ uint16_t converted_PEC_10[16];
 uint16_t in[16];
 uint16_t converted_Cmd[16];
 uint8_t data_read[64];
+uint8_t config_read_B[6];
+uint8_t config_read_A[6];
 SPI_HandleTypeDef hspi1;
 uint8_t spi_frame[16];
 uint8_t readVcell[6];
+uint8_t write_config_A[6] = {0x83, 0x00, 0x04, 0xFF, 0x3F, 0x08};
+uint8_t write_config_B[6] = {0x00, 0xF8, 0x7F, 0x8F, 0x00, 0x00};
+uint8_t write_config_B1[6] = {0x00, 0xF8, 0x7F, 0x0F, 0x02, 0x00};
+uint8_t write_config_D[6] = {0x00, 0x00, 0x00, 0x00, 0x18, 0x00};
 uint8_t write_data_A[6] = {0x06, 0x00, 0x04, 0xFF, 0x3F, 0x08};
-uint8_t write_data_B[6] = {0x00, 0xf8, 0x7F, 0x00, 0x01, 0x00};
+uint8_t write_data_B[6] = {0x00, 0xf8, 0x7F, 0x02, 0x00, 0x00};
+uint8_t test_PWM_write[6] = {0x05, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8_t dummy_spi_frame[12] = {0x00, 0x88, 0x3D, 0x60, 0x81, 0x00, 0x04, 0xFF, 0x3F, 0x08, 0x00, 0xDC};
 uint8_t dummy_standby[1] = {0xFF};
 uint8_t dummy_wakeup[120];
 uint8_t binary_array[48];
 uint8_t expanded_array[54];
+uint8_t lpm_reg[6] = {0x8A, 0x01, 0x00, 0x00, 0x00, 0x00};
+
 float cells_voltage[16];
 /* USER CODE BEGIN PV */
 
@@ -112,86 +121,90 @@ int main(void)
 	  dummy_wakeup[i] = 0xFF;
   }
 
+  wakeup_dummy();
+  send_dummy_byte();
+  HAL_Delay(100);
+
+  BMS_command_SPI(0x0027); //SRST
+  HAL_Delay(200);
 
   wakeup_dummy();
+  send_dummy_byte();
+  HAL_Delay(100);
+
+  BMS_write_SPI(WRCFGB, spi_frame, write_config_B1, 6); //DCTO = 15, DCC = 2
   HAL_Delay(10);
-
-
-
-  BMS_command_SPI(0x03E0); //Start ADC conversion with redundancy
-
+  BMS_read_SPI(RDCFGB, spi_frame, config_read_B); //Read Configuration Register Group B
+  HAL_Delay(1);
+  BMS_write_SPI(WRCFGA, spi_frame, write_config_A, 6); //REFON up
+  HAL_Delay(10);
+  BMS_command_SPI(0x03E0); //Start Cell Voltage ADC Conversion and Poll Status
   HAL_Delay(200);
 
 
+//
+//  wakeup_dummy();
+//    send_dummy_byte();
+//
+//  BMS_write_SPI(WRCFGD, spi_frame, write_config_D, 6);
+//  HAL_Delay(1);
+//  BMS_read_SPI(RDCFGD, spi_frame, data_read);
+//
+//  HAL_Delay(1);
+//  BMS_write_SPI(WRCFGB, spi_frame, write_data_B, 6);
+//
+//  HAL_Delay(1);
+//  BMS_write_SPI(WRPWMA, spi_frame, test_PWM_write, 6);
+//
+//  HAL_Delay(1);
+//
+//  BMS_read_SPI(RDPWMA, spi_frame, data_read);
+//
+//  HAL_Delay(200);
+
+
+
+
+
+
+
+//  HAL_Delay(500);
+//  wakeup_dummy();
+//  send_dummy_byte();
+//   HAL_Delay(100);
+//
 //  BMS_write_SPI(WRCFGB, spi_frame, write_data_B, 6);
 //  HAL_Delay(1);
-//
 //  BMS_read_SPI(RDCFGB, spi_frame, data_read);
-//  HAL_Delay(1);
+//    BMS_write_SPI(0x0001, spi_frame, write_config_A, 6);
+//    	    HAL_Delay(1);
+//    BMS_read_SPI(0x0026, spi_frame, config_read_A);
+//    	    HAL_Delay(1);
+//    BMS_write_SPI(0x0024, spi_frame, write_config_B, 6);
+//    		HAL_Delay(1);
+//    BMS_read_SPI(0x0026, spi_frame, config_read_B);
+//    		HAL_Delay(1);
+//    BMS_command_SPI(0x01F8); //S-ADC conversion
+//    		HAL_Delay(200);
 
-  BMS_read_all_SPI(0x004C, spi_frame, data_read);
-  monitor_cells();
-
-
-
-
-
-
-
-
-
-  //HAL_Delay(200);
-  //HAL_Delay(5);
-//
-//
-//
-  //HAL_Delay(5);
-
-
-//  HAL_Delay(5);
-//  BMS_read_SPI(0x001A,spi_frame, data_read); //Read GPIO Register Group B
-//  HAL_Delay(5);
-//  BMS_read_SPI(0x001B,spi_frame, data_read); //Read GPIO Register Group B
-//  HAL_Delay(5);
-//  BMS_read_SPI(0x001F,spi_frame, data_read); //Read GPIO Register Group B
-
-
-
-//	BMS_command_SPI(0x0041);							//Cell Monitor Enable
-//	HAL_Delay(10);
-//	BMS_read_SPI(0x0002, spi_frame, data_read);     //Read CFGA
-
-
-
-	//BMS_read_SPI(0x0082, spi_frame, data_read);
-
-	//BMS_read_SPI(0x0032, spi_frame, data_read);
-//	HAL_Delay(10);
-//
-//	BMS_read_SPI(0x0002, spi_frame, data_read);     //Read CFGA
-//
-//	BMS_command_SPI(0x0040);							//CMDIS (Cell Monitor Disable)
-//	BMS_command_SPI(0x0041);							//Cell Monitor Enable
-//	HAL_Delay(10);
-//	BMS_read_SPI(0x00A6, spi_frame, data_read);	//Read CFGD
-//
-//
-//
-//	  BMS_read_SPI(0x0044, spi_frame, data_read);  //Read Average Cell Voltage Register Group A
-
-
-
-
-
-  /* USER CODE END 2 */
+//  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     /* USER CODE END WHILE */
-	  BMS_read_all_SPI(0x004C, spi_frame, data_read);
+	  //BMS_read_SPI(RDCFGA, spi_frame, data_read);
+//	  BMS_command_SPI(0x03F0);
+//	  HAL_Delay(20);
+//	  wakeup_dummy();
+	  send_dummy_byte(); //Sending for exiting sleep mode
+	  HAL_Delay(1);
+
+	  BMS_read_all_SPI(0x000C, spi_frame, data_read); //Cell Voltage reading
 	  monitor_cells();
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
